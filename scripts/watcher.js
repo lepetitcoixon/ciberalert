@@ -29,19 +29,25 @@ fs.watch(INBOX, { persistent: true }, (event, filename) => {
 });
 
 async function ingestEmlFile(file, buf) {
+  // Anti-doble-procesamiento (fs.watch dispara 2 events por copia): si ya está en curso o no existe, skip
+  if (inFlight.has(file)) return;
+  inFlight.add(file);
   const client = new (require('pg').Client)({ connectionString: process.env.DATABASE_URL });
   try {
     await client.connect();
     const r = await ingestEmlBuffer(buf, client);
     console.log(`[${ts()}] INGEST ${path.basename(file)} → INC=${r.inc_id} ${r.created ? 'NUEVA' : 'upsert'}${r.action ? ' acción:' + r.action : ''}`);
-    fs.renameSync(file, path.join(PROCESSED, `${Date.now()}-${path.basename(file)}`));
+    try { fs.renameSync(file, path.join(PROCESSED, `${Date.now()}-${path.basename(file)}`)); } catch (e) { if (e.code !== 'ENOENT') throw e; }
   } catch (e) {
     console.error(`[${ts()}] FALLO ${file}: ${e.message}`);
     try { fs.renameSync(file, path.join(FAILED, `${Date.now()}-${path.basename(file)}`)); } catch {}
   } finally {
     try { await client.end(); } catch {}
+    inFlight.delete(file);
   }
 }
+
+const inFlight = new Set();
 
 function ts() { return new Date().toISOString(); }
 console.log(`👀 CiberAlert watcher (fs.watch) escuchando ${INBOX} → ${PROCESSED}`);
