@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "chokidar": "^5.0.0",
     "mailparser": "^3.9.28",
     "next": "16.3.6",
     "pg": "^8.23.0",

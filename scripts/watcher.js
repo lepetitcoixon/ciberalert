@@ -1,10 +1,8 @@
 // Watcher de carpeta inbox: ingiere cualquier .eml que aparezca en /var/spool/ciberalert/inbox
-// Requiere chokidar (npm i chokidar). Se registra como servicio systemd ciberalert-watcher.
-// Convive con la API: TODO pasa por lib/ingest.js → dedupe por INC garantizado.
-const { Client } = require('pg');
+// Usa fs.watch nativo (chokidar v5 no dispara eventos en glibc EL8 — probado).
+// Se registra como servicio systemd ciberalert-watcher. Todo pasa por lib/ingest.js.
 const fs = require('fs');
 const path = require('path');
-const chokidar = require('chokidar');
 const { ingestEmlBuffer } = require('../lib/ingest');
 
 const INBOX = process.env.CIBERALERT_INBOX || '/var/spool/ciberalert/inbox';
@@ -13,29 +11,37 @@ const FAILED = process.env.CIBERALERT_FAILED || '/var/spool/ciberalert/failed';
 
 [INBOX, PROCESSED, FAILED].forEach(d => fs.mkdirSync(d, { recursive: true }));
 
-function db() {
-  return new Client({ connectionString: process.env.DATABASE_URL });
-}
+// fs.watch vigila el DIRECTORIO: cheap, fiable, y dispara en create/rename
+fs.watch(INBOX, { persistent: true }, (event, filename) => {
+  if (!filename || !filename.endsWith('.eml')) return;
+  const file = path.join(INBOX, filename);
+  // pequeña espera para que la copia termine (awaitWriteFinish casero)
+  setTimeout(async () => {
+    try {
+      // ignoreInitial no aplica: dedupe por INC garantiza no duplicar
+      const buf = fs.readFileSync(file);
+      if (buf.length < 20) return; // archivo aún en escritura
+      await ingestEmlFile(file, buf);
+    } catch (e) {
+      if (e.code !== 'ENOENT') console.error(`[${ts()}] FALLO ${filename}: ${e.message}`);
+    }
+  }, 1000);
+});
 
-const watcher = chokidar.watch(path.join(INBOX, '*.eml'), { ignoreInitial: true, awaitWriteFinish: { stabilityThreshold: 800, pollInterval: 200 } });
-
-watcher.on('add', async (file) => {
-  const client = db();
+async function ingestEmlFile(file, buf) {
+  const client = new (require('pg').Client)({ connectionString: process.env.DATABASE_URL });
   try {
     await client.connect();
-    const buf = fs.readFileSync(file);
     const r = await ingestEmlBuffer(buf, client);
-    console.log(`[${new Date().toISOString()}] INGEST ${path.basename(file)} → INC=${r.inc_id} ${r.created ? 'NUEVA' : 'upsert'}${r.action ? ' acción: ' + r.action : ''}`);
-    const dest = path.join(PROCESSED, `${Date.now()}-${path.basename(file)}`);
-    fs.renameSync(file, dest);
+    console.log(`[${ts()}] INGEST ${path.basename(file)} → INC=${r.inc_id} ${r.created ? 'NUEVA' : 'upsert'}${r.action ? ' acción:' + r.action : ''}`);
+    fs.renameSync(file, path.join(PROCESSED, `${Date.now()}-${path.basename(file)}`));
   } catch (e) {
-    console.error(`[${new Date().toISOString()}] FALLO ${file}: ${e.message}`);
-    const dest = path.join(FAILED, `${Date.now()}-${path.basename(file)}`);
-    try { fs.renameSync(file, dest); } catch {}
+    console.error(`[${ts()}] FALLO ${file}: ${e.message}`);
+    try { fs.renameSync(file, path.join(FAILED, `${Date.now()}-${path.basename(file)}`)); } catch {}
   } finally {
     try { await client.end(); } catch {}
   }
-});
+}
 
-watcher.on('error', e => console.error('WATCHER ERROR:', e.message));
-console.log(`👀 CiberAlert watcher escuchando eml en ${INBOX} → ${PROCESSED}`);
+function ts() { return new Date().toISOString(); }
+console.log(`👀 CiberAlert watcher (fs.watch) escuchando ${INBOX} → ${PROCESSED}`);
