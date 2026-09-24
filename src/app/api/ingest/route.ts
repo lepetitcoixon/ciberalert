@@ -8,6 +8,12 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+    const dbgAuth = req.headers.get('authorization');
+    const dbgToken = req.headers.get('x-ingest-token');
+    console.log('[INGEST DBG] auth header:', dbgAuth ? `len=${dbgAuth.length}` : 'null',
+                '| x-token:', dbgToken ? `len=${dbgToken.length}` : 'null',
+                '| env INGEST_TOKEN len=', (process.env.INGEST_TOKEN || 'NULL').length,
+                '| env first/last:', (process.env.INGEST_TOKEN || '').slice(0,8), (process.env.INGEST_TOKEN || '').slice(-8));
   if (!authorized(req)) {
     return NextResponse.json({ error: 'token invalido' }, { status: 401 });
   }
