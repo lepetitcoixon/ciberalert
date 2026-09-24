@@ -34,3 +34,10 @@ scripts/run-with-env.sh node scripts/import-csv.js  /ruta/registro.csv
 
 ## NO viables (descartados): 
 - SMTP receptor (requiere relay corporativo), webhook del SOC (no lo ofrecen), IMAP (OAuth igual que Graph pero peor).
+
+## Estado verificado (24 Sep 2026, CT102)
+- ✅ CLI ingest-eml.js / import-csv.js probados con datos reales (1353 alertas).
+- ✅ API POST /api/ingest con Bearer token: raw .eml (message/rfc822) y multipart files[]. Probada desde LAN.
+- ✅ Watcher fs.watch en /var/spool/ciberalert/inbox (systemd ciberalert-watcher): INGEST verificado, 0 fallidos.
+- ⚠️ chokidar v5 NO funciona en glibc EL8 (no dispara eventos) — no reintroducir; usa fs.watch nativo.
+- ⚠️ next build con SWC no carga en EL8: ya fijado --webpack.
