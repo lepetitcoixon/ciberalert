@@ -2,7 +2,7 @@
 // Uso: node scripts/ingest-eml.js /ruta/alerta.eml
 const fs = require('fs');
 const { Client } = require('pg');
-const { parseEml } = require('./parse-eml');
+const { parseEml } = require('../lib/parse-eml');
 
 (async () => {
   const file = process.argv[2];
