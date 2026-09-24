@@ -1,69 +1,41 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+import { useMemo, useState } from 'react'
+import Link from 'next/link'
+import { Activity, AlertTriangle, ArrowUpRight, Check, ChevronRight, CircleDot, Copy, FileUp, Filter, LayoutDashboard, Menu, Search, ShieldCheck, Sparkles, Upload, X } from 'lucide-react'
+import { alerts, appName, appSubtitle, chartColors, dashboardDescription, dashboardKpis, dashboardTitle, defaultWarning, formatDate, maxReviewCards, navItems, priorityAlerts, severityClass, severityCounts, severityDot, staticWarning, statusClass, statusCounts, statusDot, suggestedAction, topTypes, typeOptions, typeOptions as types, transitionStatus, type Alert, type Severity, type AlertStatus as Status } from '@/lib/data'
+import { Bar, BarChart, CartesianGrid, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+
+const Icon = ({ name }: { name: string }) => name === 'shield' ? <ShieldCheck /> : name === 'alert' ? <AlertTriangle /> : name === 'spark' ? <Sparkles /> : <ArrowUpRight />
+const navIcon = (label: string) => label === 'Dashboard' ? <LayoutDashboard /> : label === 'Alertas' ? <CircleDot /> : <FileUp />
+
+export default function Page() {
+  const [items, setItems] = useState<Alert[]>(alerts)
+  const [selected, setSelected] = useState<Alert | null>(null)
+  const [search, setSearch] = useState('')
+  const [severity, setSeverity] = useState<Severity | 'Todos'>('Todos')
+  const [type, setType] = useState('Todos')
+  const [toast, setToast] = useState('')
+  const filtered = useMemo(() => items.filter(a => (!search || `${a.inc_id} ${a.title} ${a.description}`.toLowerCase().includes(search.toLowerCase())) && (severity === 'Todos' || a.severity === severity) && (type === 'Todos' || a.type === type)).filter(a => a.status !== 'Cerrado').sort((a,b) => ({Critical:4,High:3,Medium:2,Low:1}[b.severity] - {Critical:4,High:3,Medium:2,Low:1}[a.severity]) || b.detected_at.localeCompare(a.detected_at)).slice(0,maxReviewCards), [items, search, severity, type])
+  const update = (id:string, next: Status | 'Falso positivo') => { setItems(old => old.map(a => a.inc_id === id ? {...a, status: next === 'Falso positivo' ? 'Cerrado' : next} : a)); setToast(next === 'Falso positivo' ? 'Alerta marcada como falso positivo' : `Estado actualizado: ${next}`); setTimeout(() => setToast(''), 3000) }
+  return <div className="min-h-screen bg-[#07111f] text-slate-100">
+    <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-white/10 bg-[#0a1626] lg:flex lg:flex-col">
+      <div className="flex h-20 items-center gap-3 border-b border-white/10 px-6"><div className="flex size-9 items-center justify-center rounded-lg bg-sky-500 font-bold text-slate-950">CA</div><div><div className="font-semibold tracking-tight">{appName}</div><div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">SOC interno</div></div></div>
+      <nav className="flex flex-1 flex-col gap-1 p-4"><div className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Operaciones</div>{navItems.map(item => <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm ${item.href === '/' ? 'bg-sky-500/10 text-sky-300' : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'}`}>{navIcon(item.label)}<span>{item.label}</span>{item.label === 'Alertas' && <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-300">{items.length}</span>}</Link>)}</nav>
+      <div className="m-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3"><div className="mb-2 flex items-center gap-2 text-xs font-medium text-emerald-300"><span className="size-2 rounded-full bg-emerald-400" />Sistema operativo</div><div className="text-[11px] leading-relaxed text-slate-500">Última sincronización<br/><span className="text-slate-300">Hoy, 09:42 · v0.9.4</span></div></div>
+    </aside>
+    <main className="lg:pl-64"><header className="flex h-20 items-center justify-between border-b border-white/10 px-5 sm:px-8"><div className="flex items-center gap-3"><button className="lg:hidden"><Menu /></button><div><p className="text-xs text-slate-500">SOC / Operaciones</p><h1 className="text-lg font-semibold">Buenos días, Ana</h1></div></div><div className="flex items-center gap-3"><span className="hidden text-xs text-slate-500 sm:block">24 septiembre 2026 · 10:30</span><div className="flex size-8 items-center justify-center rounded-full bg-violet-500/20 text-xs font-semibold text-violet-200">AM</div></div></header>
+      <div className="mx-auto max-w-[1500px] p-5 sm:p-8"><div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-sky-400"><span className="size-1.5 rounded-full bg-sky-400" />Monitorización activa</div><h2 className="text-2xl font-semibold tracking-tight">{dashboardTitle}</h2><p className="mt-1 text-sm text-slate-500">{dashboardDescription}</p></div><Link href="/alerts" className="flex items-center gap-2 self-start rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300 hover:bg-white/10">Ver todas las alertas <ArrowUpRight /></Link></div>
+        <div className="mb-8 grid grid-cols-2 gap-3 xl:grid-cols-4">{dashboardKpis.map((kpi,i) => <div key={kpi.label} className="rounded-xl border border-white/10 bg-[#0d1b2e] p-4"><div className="mb-4 flex items-center justify-between"><span className="text-xs text-slate-500">{kpi.label}</span><span className={`flex size-8 items-center justify-center rounded-lg ${i===1?'bg-red-500/10 text-red-400':i===2?'bg-sky-500/10 text-sky-400':'bg-violet-500/10 text-violet-400'}`}><Icon name={kpi.icon}/></span></div><div className="text-2xl font-semibold tracking-tight">{kpi.value}</div><div className="mt-1 text-[11px] text-slate-500">vs. periodo anterior <span className="text-emerald-400">↑ 12%</span></div></div>)}</div>
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 sm:flex-row sm:items-center"><AlertTriangle className="text-amber-400"/><div className="flex-1"><div className="text-xs font-medium text-amber-200">Atención operativa</div><div className="text-xs text-amber-200/60">{defaultWarning} · {staticWarning}</div></div><button className="text-xs text-amber-300 hover:underline">Revisar configuración</button></div>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(360px,1fr)]"><section><div className="mb-3 flex flex-col gap-3 sm:flex-row"><div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por INC, título o descripción…" className="h-10 w-full rounded-lg border border-white/10 bg-[#0d1b2e] pl-10 pr-3 text-sm outline-none placeholder:text-slate-600 focus:border-sky-500/50"/></div><select value={severity} onChange={e=>setSeverity(e.target.value as Severity|'Todos')} className="h-10 rounded-lg border border-white/10 bg-[#0d1b2e] px-3 text-xs text-slate-300 outline-none"><option>Todos</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select><select value={type} onChange={e=>setType(e.target.value)} className="h-10 rounded-lg border border-white/10 bg-[#0d1b2e] px-3 text-xs text-slate-300 outline-none"><option>Todos</option>{typeOptions.map(t=><option key={t}>{t}</option>)}</select></div><div className="flex flex-col gap-3">{filtered.map(alert => <AlertCard key={alert.inc_id} alert={alert} onSelect={()=>setSelected(alert)} onUpdate={next=>update(alert.inc_id,next)}/>)}</div></section><section className="space-y-4"><StatsPanel title="Distribución por estado"><ResponsiveContainer width="100%" height={150}><PieChart><Pie data={statusCounts} dataKey="count" nameKey="status" innerRadius={45} outerRadius={65} paddingAngle={3} stroke="none" fill={chartColors.violet}/><Tooltip contentStyle={{background:'#0d1b2e',border:'1px solid #ffffff1a',borderRadius:8,fontSize:11}}/></PieChart></ResponsiveContainer><div className="grid grid-cols-2 gap-2">{statusCounts.map(s=><div key={s.name} className="flex items-center gap-2 text-[11px] text-slate-400"><span className={`size-2 rounded-full ${statusDot[s.name as Status]}`}/>{s.name}<span className="ml-auto text-slate-200">{s.value}</span></div>)}</div></StatsPanel><StatsPanel title="Alertas por severidad"><ResponsiveContainer width="100%" height={150}><BarChart data={severityCounts} layout="vertical"><CartesianGrid horizontal={false} stroke="#ffffff10"/><XAxis type="number" hide/><YAxis type="category" dataKey="severity" width={58} tick={{fill:'#94a3b8',fontSize:10}} axisLine={false} tickLine={false}/><Bar dataKey="count" fill={chartColors.orange} radius={[0,4,4,0]} barSize={14}/><Tooltip contentStyle={{background:'#0d1b2e',border:'1px solid #ffffff1a',borderRadius:8,fontSize:11}}/></BarChart></ResponsiveContainer></StatsPanel><StatsPanel title="Evolución mensual"><ResponsiveContainer width="100%" height={150}><LineChart data={['Abr','May','Jun','Jul','Ago','Sep'].map((m,i)=>({month:m,count:[42,58,49,73,64,81][i]}))}><CartesianGrid vertical={false} stroke="#ffffff10"/><XAxis dataKey="month" tick={{fill:'#64748b',fontSize:10}} axisLine={false} tickLine={false}/><YAxis hide/><Line type="monotone" dataKey="count" stroke={chartColors.blue} strokeWidth={2} dot={{r:3,fill:chartColors.blue}}/><Tooltip contentStyle={{background:'#0d1b2e',border:'1px solid #ffffff1a',borderRadius:8,fontSize:11}}/></LineChart></ResponsiveContainer></StatsPanel><StatsPanel title="Top tipos"><div className="flex flex-col gap-3">{topTypes.slice(0,5).map(t=><div key={t.type}><div className="mb-1 flex justify-between text-[11px]"><span className="text-slate-400">{t.type}</span><span className="text-slate-200">{t.count}</span></div><div className="h-1 rounded-full bg-white/10"><div className="h-1 rounded-full bg-sky-400" style={{width:`${Math.max(10,t.count/8*100)}%`}}/></div></div>)}</div></StatsPanel></section></div></div>
+    </main>
+    {selected && <DetailPanel alert={selected} onClose={()=>setSelected(null)} onUpdate={next=>{update(selected.inc_id,next);setSelected(null)}}/>}{toast && <div className="fixed bottom-5 right-5 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-[#11251f] px-4 py-3 text-sm text-emerald-300 shadow-xl"><Check/> {toast}</div>}
+  </div>
 }
+
+function AlertCard({alert,onSelect,onUpdate}:{alert:Alert;onSelect:()=>void;onUpdate:(next:Status|'Falso positivo')=>void}) { return <article className="group rounded-xl border border-white/10 bg-[#0d1b2e] p-4 transition hover:border-sky-500/30"><div className="flex items-start justify-between gap-3"><div className="min-w-0 flex-1"><div className="mb-2 flex flex-wrap items-center gap-2"><button onClick={onSelect} className="font-mono text-xs font-semibold text-sky-400 hover:underline">{alert.inc_id}</button><span className={`rounded border px-2 py-0.5 text-[10px] font-semibold ${severityClass[alert.severity]}`}>{alert.severity}</span><span className={`rounded border px-2 py-0.5 text-[10px] ${statusClass[alert.status]}`}>{alert.status}</span></div><button onClick={onSelect} className="block truncate text-left text-sm font-medium text-slate-100 hover:text-sky-300">{alert.title}</button><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500"><span>{alert.type}</span><span>{alert.hostname.join(', ')}</span><span>Detectada {formatDate(alert.detected_at)}</span></div></div><button onClick={onSelect} aria-label="Ver detalle" className="rounded p-1 text-slate-600 hover:bg-white/5 hover:text-slate-200"><ChevronRight/></button></div><div className="mt-4 flex flex-col gap-3 border-t border-white/10 pt-3 sm:flex-row sm:items-center"><div className="flex-1 text-xs leading-relaxed text-slate-400"><span className="font-medium text-sky-300">Acción sugerida: </span>{suggestedAction(alert)}</div><div className="flex shrink-0 gap-2"><button onClick={()=>onUpdate(transitionStatus(alert.status))} className="rounded-md border border-sky-500/20 bg-sky-500/10 px-2.5 py-1.5 text-[11px] text-sky-300 hover:bg-sky-500/20">Avanzar</button><button onClick={()=>onUpdate('Falso positivo')} className="rounded-md border border-white/10 px-2.5 py-1.5 text-[11px] text-slate-400 hover:bg-white/5">Falso positivo</button></div></div></article> }
+function StatsPanel({title,children}:{title:string;children:React.ReactNode}) { return <div className="rounded-xl border border-white/10 bg-[#0d1b2e] p-4"><div className="mb-3 text-xs font-medium text-slate-300">{title}</div>{children}</div> }
+function DetailPanel({alert,onClose,onUpdate}:{alert:Alert;onClose:()=>void;onUpdate:(next:Status)=>void}) { const [copied,setCopied]=useState(false); return <><button aria-label="Cerrar detalle" onClick={onClose} className="fixed inset-0 z-20 bg-black/50"/><aside className="fixed inset-y-0 right-0 z-30 w-full max-w-xl overflow-y-auto border-l border-white/10 bg-[#0a1626] p-6 shadow-2xl"><div className="mb-6 flex items-start justify-between"><div><div className="mb-2 font-mono text-xs text-sky-400">{alert.inc_id}</div><h2 className="max-w-md text-lg font-semibold">{alert.title}</h2></div><button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-white/5"><X/></button></div><div className="mb-6 flex gap-2"><span className={`rounded border px-2 py-1 text-xs ${severityClass[alert.severity]}`}>{alert.severity}</span><span className={`rounded border px-2 py-1 text-xs ${statusClass[alert.status]}`}>{alert.status}</span></div><div className="mb-6 rounded-lg border border-white/10 bg-white/[0.02] p-4"><div className="mb-2 text-xs font-medium text-slate-400">Descripción</div><p className="text-sm leading-relaxed text-slate-300">{alert.description}</p></div><div className="grid grid-cols-2 gap-4 text-xs"><DetailField label="Tipo" value={alert.type}/><DetailField label="Origen" value={alert.source}/><DetailField label="Equipos" value={alert.hostname.join(', ')}/><DetailField label="Usuarios" value={alert.username.join(', ')}/><DetailField label="IPs" value={alert.ip.join(', ')}/><DetailField label="Grupos" value={alert.group.join(', ')}/><DetailField label="Detectada" value={formatDate(alert.detected_at)}/><DetailField label="Actualizada" value={formatDate(alert.updated_at)}/></div><div className="my-6 border-t border-white/10 pt-5"><div className="mb-3 text-xs font-medium text-slate-400">Evidencia de archivo</div><div className="mb-2 break-all rounded-lg border border-white/10 bg-[#07111f] p-3 font-mono text-[11px] text-slate-400">{alert.file_path}</div><div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#07111f] p-3 font-mono text-[10px] text-slate-500"><span className="break-all">SHA256: {alert.file_hash}</span><button onClick={()=>{navigator.clipboard?.writeText(alert.file_hash);setCopied(true);setTimeout(()=>setCopied(false),1500)}} className="ml-auto shrink-0 rounded bg-white/5 p-1 text-slate-300 hover:bg-white/10">{copied?<Check/>:<Copy/>}</button></div><a href={alert.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs text-sky-400 hover:underline">Abrir en portal SOC <ArrowUpRight/></a></div><div className="mb-6"><div className="mb-3 text-xs font-medium text-slate-400">Timeline de acciones</div><div className="flex flex-col gap-3 border-l border-white/10 pl-4">{alert.actions.map((a,i)=><div key={i} className="relative"><span className="absolute -left-[21px] top-1 size-2 rounded-full bg-sky-400"/><div className="text-xs text-slate-200">{a.action}</div><div className="text-[11px] text-slate-500">{a.actor} · {formatDate(a.created_at)}</div></div>)}</div></div><div className="flex gap-2"><button onClick={()=>onUpdate(transitionStatus(alert.status))} className="flex-1 rounded-lg bg-sky-500 px-3 py-2 text-xs font-medium text-slate-950 hover:bg-sky-400">Avanzar estado</button><button onClick={onClose} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-400 hover:bg-white/5">Cerrar</button></div></aside></> }
+function DetailField({label,value}:{label:string;value:string}) { return <div><div className="mb-1 text-[10px] uppercase tracking-wider text-slate-600">{label}</div><div className="text-slate-300">{value}</div></div> }
+
