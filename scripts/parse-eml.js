@@ -35,6 +35,10 @@ function extractSeverity(subject) {
 
 async function parseEml(filePath) {
   const buf = fs.readFileSync(filePath);
+  return parseEmlBuffer(buf);
+}
+
+async function parseEmlBuffer(buf) {
   const parsed = await simpleParser(buf);
   const out = {
     message_id: parsed.messageId || null,
@@ -153,4 +157,4 @@ if (require.main === module) {
   })();
 }
 
-module.exports = { parseEml };
+module.exports = { parseEml, parseEmlBuffer };
