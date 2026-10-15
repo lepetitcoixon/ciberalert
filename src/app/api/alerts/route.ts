@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const from = sp.get('from');
   const to = sp.get('to');
   const page = Math.max(1, parseInt(sp.get('page') || '1'));
-  const pageSize = Math.min(100, parseInt(sp.get('pageSize') || '20'));
+  const pageSize = Math.min(500, parseInt(sp.get('pageSize') || '20'));
 
   const where: string[] = [];
   const params: any[] = [];
@@ -20,11 +20,11 @@ export async function GET(req: NextRequest) {
 
   if (q) {
     const p = add(`%${q}%`);
-    where.push(`(inc_id ILIKE ${p} OR title ILIKE ${p} OR description ILIKE ${p})`);
+    where.push(`(inc_id ILIKE ${p} OR title ILIKE ${p} OR alert_type_desc ILIKE ${p} OR raw_summary ILIKE ${p})`);
   }
   if (severities?.length) where.push(`severity = ANY(${add(severities)})`);
   if (statuses?.length) where.push(`status = ANY(${add(statuses)})`);
-  if (type && type !== 'Todos') where.push(`type = ${add(type)}`);
+  if (type && type !== 'Todos') where.push(`alert_type = ${add(type)}`);
   if (from) where.push(`detected_at >= ${add(from)}`);
   if (to) where.push(`detected_at <= ${add(to)}`);
 
@@ -44,4 +44,3 @@ export async function GET(req: NextRequest) {
     });
   } finally { await c.end(); }
 }
-

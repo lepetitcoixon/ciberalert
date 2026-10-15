@@ -1,7 +1,8 @@
 // POST /api/ingest — puerta interna de ingesta (solo LAN)
-// multipart/form-data: files[] (.eml o .csv) | Authorization: Bearer <INGEST_TOKEN>
+// multipart/form-data: files[] (.eml o .csv) | message/rfc822 (.eml crudo) | application/json (campos sueltos)
+// Authorization: Bearer <INGEST_TOKEN> (opcional; si INGEST_TOKEN está vacío, queda abierta)
 import { NextRequest, NextResponse } from 'next/server';
-import { ingestEmlBuffer, ingestCsvText, authorized, INGEST_TOKEN } from '@/lib/ingest';
+import { ingestEmlBuffer, ingestCsvText, ingestJson, authorized, INGEST_TOKEN } from '@/lib/ingest';
 import { Client } from 'pg';
 
 export const runtime = 'nodejs';
@@ -43,11 +44,23 @@ export async function POST(req: NextRequest) {
       const buf = Buffer.from(await req.arrayBuffer());
       const r = await ingestEmlBuffer(buf);
       results.push({ ok: true, inc_id: r.inc_id, created: r.created, action: r.action });
+    } else if (ct.includes('application/json') || ct.includes('text/json')) {
+      const raw = await req.text();
+      let body: any;
+      try {
+        body = JSON.parse(raw);
+      } catch (e: any) {
+        console.error('[INGEST] JSON inválido. len=', raw.length, 'preview=', JSON.stringify(raw.slice(0, 300)));
+        return NextResponse.json({ ok: false, error: `JSON inválido o vacío en el cuerpo de la petición: ${e.message}`, received_len: raw.length }, { status: 400 });
+      }
+      const r = await ingestJson(body);
+      results.push(...r);
     } else {
-      return NextResponse.json({ error: 'content-type no soportado, manda multipart con files[]' }, { status: 400 });
+      return NextResponse.json({ error: 'content-type no soportado: usa multipart files[], message/rfc822 o application/json' }, { status: 400 });
     }
     return NextResponse.json({ ok: true, token_configured: !!INGEST_TOKEN, results });
   } catch (e: any) {
+    console.error('[INGEST ERROR]', e?.message, e?.stack);
     return NextResponse.json({ ok: false, error: e.message, results }, { status: 500 });
   }
 }

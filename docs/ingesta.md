@@ -10,9 +10,9 @@ en la API de ingesta (`POST /api/ingest`, token bearer igual al de `/etc/ciberal
   en un PC con Outlook que guarde los correos de la carpeta de alertas como .eml (tarea programada).
 
 ## 2. API interna `POST /api/ingest`
-- `Authorization: Bearer <INGEST_TOKEN>` (igual al de `/etc/ciberalert-env`).
-- `multipart/form-data` con campo `files` (uno o varios .eml o .csv) o JSON eml a pelo.
-- Devuelve por fichero: `{inc_id, created, action}`. Dedupe por INC automático.
+- `Authorization: Bearer <INGEST_TOKEN>` (si `INGEST_TOKEN` está vacío, la puerta queda abierta; pensada para localhost/LAN).
+- `multipart/form-data` con campo `files` (uno o varios .eml o .csv), `message/rfc822` (.eml crudo) o `application/json` (campos sueltos, ver §7).
+- Devuelve por fichero/alerta: `{inc_id, created, action}`. Dedupe por INC automático.
 
 ## 3. CLI directo en el servidor
 ```bash
@@ -31,6 +31,41 @@ scripts/run-with-env.sh node scripts/import-csv.js  /ruta/registro.csv
 
 ## 6. Subida manual
 - Arrastrar .eml al web UI. Backfill puntual y alertas sueltas.
+
+## 7. Power Automate Desktop (JSON)
+Para enviar campos sueltos desde un flujo de Power Automate Desktop (corre en el mismo PC que la app).
+
+- Acción **"Llamar al servicio web"** (`Invoke web service`):
+  - URL: `http://localhost:3000/api/ingest`
+  - Método: `POST`
+  - Cabeceras: `Content-Type: application/json`, `Accept: application/json`
+  - Cuerpo:
+```json
+{
+  "inc_id": "INC0005675021",
+  "title": "XDR Incident 76283 - Local Analysis Malware",
+  "alert_type": "Local Analysis Malware",
+  "alert_type_desc": "Detección de malware en endpoint",
+  "severity": "High",
+  "status": "Nuevo",
+  "result": "Pendiente",
+  "detected_at": "2026-09-23T12:00:00Z",
+  "hostname": "PC26806",
+  "username": "NT AUTHORITY\\SYSTEM",
+  "ip_addresses": ["10.24.1.40"],
+  "endpoint_group": "CAF_Beasain_General_Workstations",
+  "action_edr": "DETECTED",
+  "soc_url": "https://cybersecurity.telefonica.com/..."
+}
+```
+- Se acepta un objeto suelto, un array o `{"alerts": [...]}`. Respuesta: `{ok:true, results:[{inc_id, alert_id, created}]}`.
+- Alias admitidos (español/inglés): `incidencia/inc/id`, `titulo`, `tipo`, `descripcion/description`, `severidad`, `estado`,
+  `resultado`, `fecha/detected_at`, `equipo`, `usuario`, `ips/ip`, `grupo`, `resumen`, `siguiente_paso`, `hash/sha256`, `virustotal`, `enlace_soc`.
+- `severity` se normaliza a `Critical|High|Medium|Low|Info`; `status` a `Nuevo|En Proceso|Escalado|Solucionado|Pentest`.
+- Upsert por `inc_id`: si ya existe, **actualiza** (no duplica) y conserva lo que no venga en el payload.
+- Escenarios **cloud → desktop**: un flujo de nube (conector Office 365 Outlook) no puede llegar a `localhost`, así que llama a un flujo de escritorio pasándole el JSON ya montado; el de escritorio lo reenvía tal cual en el cuerpo del POST.
+- Si el texto trae comillas/saltos de línea, manda esos campos en **Base64** para no escapar nada: `title_b64`, `raw_summary_b64`, `username_b64`, `inc_id_b64`, … (se decodifican a UTF-8 sobre el campo equivalente).
+- Requiere que la app esté accesible en `localhost` (bind solo-localhost). Sin token mientras `INGEST_TOKEN` esté vacío.
 
 ## NO viables (descartados): 
 - SMTP receptor (requiere relay corporativo), webhook del SOC (no lo ofrecen), IMAP (OAuth igual que Graph pero peor).

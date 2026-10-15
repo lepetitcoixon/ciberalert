@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS alerts (
     title           TEXT,                     -- "XDR Incident 76283 - Local Analysis Malware"
     alert_type      TEXT,                     -- "Local Analysis Malware" (nombre limpio)
     alert_type_desc TEXT,                     -- descripción técnica (separada del nombre)
-    severity        TEXT CHECK (severity IN ('High','Medium','Low','Info')),
+    severity        TEXT CHECK (severity IN ('Critical','High','Medium','Low','Info')),
     status          TEXT NOT NULL DEFAULT 'Nuevo',  -- Nuevo | En Proceso | Escalado | Solucionado
     result          TEXT,                     -- Controlado | Eliminado | Falso Positivo | Bloqueado | Excepcionado | Benigno | Pendiente
     detected_at     TIMESTAMPTZ,              -- fecha de detección (del EML o CSV)

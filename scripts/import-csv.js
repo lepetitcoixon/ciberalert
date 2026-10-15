@@ -49,10 +49,12 @@ function parseUserList(raw) {
     const { name, desc } = splitAlertType(r['TipoAlerta']);
     const q = `INSERT INTO alerts
       (inc_id, source, title, alert_type, alert_type_desc, severity, status, result,
-       detected_at, hostname, username, action_edr, raw_summary, next_step, soc_url, vt_url)
-      VALUES ($1,'csv',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       detected_at, hostname, username, action_edr, raw_summary, next_step, soc_url, vt_url, endpoint_group)
+      VALUES ($1,'csv',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
       ON CONFLICT (inc_id) DO UPDATE SET
-        status = EXCLUDED.status, result = EXCLUDED.result, updated_at = now()
+        status = EXCLUDED.status, result = EXCLUDED.result,
+        endpoint_group = COALESCE(EXCLUDED.endpoint_group, alerts.endpoint_group),
+        updated_at = now()
       RETURNING (xmax = 0) AS inserted`;
     const vals = [
       inc,
@@ -69,6 +71,7 @@ function parseUserList(raw) {
       (r['SiguientePaso'] || '').trim() || null,
       (r['EnlaceSOC'] || '').trim() || null,
       (r['Virustotal'] || '').trim() || null,
+      (r['Grupo'] || '').trim() || null,
     ];
     const res = await client.query(q, vals);
     if (res.rows[0].inserted) inserted++; else updated++;
