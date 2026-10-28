@@ -58,9 +58,25 @@ export async function POST(req: NextRequest) {
     } else {
       return NextResponse.json({ error: 'content-type no soportado: usa multipart files[], message/rfc822 o application/json' }, { status: 400 });
     }
+    void enrichNewAlerts(results);
     return NextResponse.json({ ok: true, token_configured: !!INGEST_TOKEN, results });
   } catch (e: any) {
     console.error('[INGEST ERROR]', e?.message, e?.stack);
     return NextResponse.json({ ok: false, error: e.message, results }, { status: 500 });
+  }
+}
+
+// Analiza en segundo plano las alertas recién creadas (máximo 3 por petición).
+async function enrichNewAlerts(results: any[]) {
+  if (process.env.AI_ON_INGEST === '0') return;
+  const fresh = results.filter((r) => r?.ok && r?.inc_id && r?.created).slice(0, 3);
+  if (!fresh.length) return;
+  const { enrichAlertByInc } = await import('@/lib/enrich');
+  for (const r of fresh) {
+    try {
+      await enrichAlertByInc(r.inc_id);
+    } catch (e: any) {
+      console.error('[AI] ingest', r.inc_id, e?.message);
+    }
   }
 }

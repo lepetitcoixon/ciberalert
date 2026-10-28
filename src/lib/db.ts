@@ -32,6 +32,8 @@ export function mapRow(r: any): Alert {
     result: r.result || null,
     action_edr: r.action_edr || null,
     next_step: r.next_step || null,
+    ai_summary: r.ai_summary || null,
+    ai_recommendation: r.ai_recommendation || null,
     vt_url: r.vt_url || null,
     hostname: r.hostname ? [r.hostname] : [],
     username: asList(r.username),

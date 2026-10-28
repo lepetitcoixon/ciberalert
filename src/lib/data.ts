@@ -27,6 +27,8 @@ export interface Alert {
   result?: string | null
   action_edr?: string | null
   next_step?: string | null
+  ai_summary?: string | null
+  ai_recommendation?: string | null
   vt_url?: string | null
   hostname: string[]
   username: string[]
